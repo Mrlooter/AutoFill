@@ -1,0 +1,249 @@
+// ==UserScript==
+// @name         Autofill Demo
+// @namespace    http://tampermonkey.net/
+// @version      2025-07-27
+// @description  Hamburger menu with multiple autofill actions: Scripted Actions and State Tax Renewal steps.
+// @author       ChatGPT
+// @match        https://website.com/demo/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    const STEP_DELAY = 50;
+
+    // === Delay utility ===
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // === Simulate key press ===
+    function pressKey(el, key, code) {
+        const event = new KeyboardEvent('keydown', {
+            key,
+            code,
+            keyCode: code,
+            which: code,
+            bubbles: true,
+        });
+        el.dispatchEvent(event);
+    }
+
+    // === Get all focusable input fields ===
+    function getFocusableInputs() {
+        return Array.from(document.querySelectorAll('input, textarea, [tabindex]:not([tabindex="-1"])'))
+            .filter(el =>
+                el.offsetParent !== null &&
+                !el.disabled &&
+                el.type !== 'date' &&
+                !el.className.toLowerCase().includes('date')
+            );
+    }
+
+    // === Step Definitions ===
+    const stateTaxReg = [
+        { action: 'tab', count: 2 },
+        { action: 'down', count: 5 },
+        { action: 'enter', count: 1 },
+        { action: 'tab', count: 1 },
+        { action: 'down', count: 3 },
+        { action: 'enter', count: 1 },
+        { action: 'tab', count: 1 },
+        { action: 'up', count: 20 },
+        { action: 'enter', count: 1 },
+        { action: 'tab', count: 4 },
+        { action: 'down', count: 2 },
+        { action: 'enter', count: 1 },
+    ];
+
+    const stateTaxRenewal = [
+        { action: 'tab', count: 2 },
+        { action: 'down', count: 5 },
+        { action: 'enter', count: 1 },
+        { action: 'tab', count: 1 },
+        { action: 'down', count: 3 },
+        { action: 'enter', count: 1 },
+        { action: 'tab', count: 1 },
+        { action: 'up', count: 19 },
+        { action: 'enter', count: 1 },
+        { action: 'tab', count: 4 },
+        { action: 'down', count: 2 },
+        { action: 'enter', count: 1 },
+    ];
+
+    const licenseUpload = [
+        { action: 'tab', count: 2 },
+        { action: 'down', count: 5 },
+        { action: 'enter', count: 1 },
+        { action: 'tab', count: 1 },
+        { action: 'down', count: 3 },
+        { action: 'enter', count: 1 },
+        { action: 'tab', count: 1 },
+        { action: 'down', count: 2 },
+        { action: 'enter', count: 1 },
+        { action: 'tab', count: 4 },
+        { action: 'down', count: 2 },
+        { action: 'enter', count: 1 },
+    ];
+
+    // === Execute one step ===
+    async function performStep(el, step) {
+        for (let i = 0; i < step.count; i++) {
+            switch (step.action) {
+                case 'down': pressKey(el, 'ArrowDown', 40); break;
+                case 'up': pressKey(el, 'ArrowUp', 38); break;
+                case 'enter': pressKey(el, 'Enter', 13); break;
+            }
+            await delay(STEP_DELAY);
+        }
+    }
+
+    // === Execute a sequence of steps ===
+    async function runSteps(stepList) {
+        const inputs = getFocusableInputs();
+        let currentInput = 0;
+
+        for (const step of stepList) {
+            if (step.action === 'tab') {
+                for (let i = 0; i < step.count; i++) {
+                    currentInput++;
+                    if (inputs[currentInput]) {
+                        inputs[currentInput].focus();
+                        await delay(STEP_DELAY);
+                    }
+                }
+            } else {
+                const el = inputs[currentInput] || document.activeElement;
+                await performStep(el, step);
+            }
+        }
+    }
+
+    // === Functional Triggers ===
+    function runScriptedActions() {
+        runSteps(stateTaxReg);
+    }
+
+    function runStateTaxRenewal() {
+        runSteps(stateTaxRenewal);
+    }
+
+    function runLicenseUpload() {
+        runSteps(licenseUpload);
+    }
+
+    // === Styles for Hamburger Menu ===
+    function injectStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            #autofill-menu-wrapper {
+                position: fixed;
+                bottom: 100px;
+                right: 35px;
+                z-index: 9999;
+                font-family: Arial, sans-serif;
+            }
+
+            .autofill-button {
+                width: 64px;
+                height: 64px;
+                background-color: #007bff;
+                color: #fff;
+                border: none;
+                border-radius: 50%;
+                font-size: 30px;
+                text-align: center;
+                line-height: 64px;
+                cursor: pointer;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            }
+
+            .autofill-menu {
+                display: none;
+                position: absolute;
+                bottom: 75px;
+                right: 0;
+                background-color: white;
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+                overflow: hidden;
+                min-width: 220px;
+            }
+
+            .autofill-menu button {
+                display: block;
+                width: 100%;
+                padding: 10px;
+                background: none;
+                border: none;
+                border-bottom: 1px solid #eee;
+                text-align: left;
+                cursor: pointer;
+                font-size: 14px;
+            }
+
+            .autofill-menu button:hover {
+                background-color: #f0f0f0;
+            }
+
+            .autofill-menu button:last-child {
+                border-bottom: none;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // === Render Menu & Button ===
+    function renderMenu() {
+        if (document.getElementById('autofill-menu-wrapper')) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.id = 'autofill-menu-wrapper';
+
+        const button = document.createElement('button');
+        button.className = 'autofill-button';
+        button.textContent = '☰';
+
+        const menu = document.createElement('div');
+        menu.className = 'autofill-menu';
+
+        const actions = [
+            { label: 'Run State Tax Registration', handler: runScriptedActions },
+            { label: 'Run State Tax Renewal', handler: runStateTaxRenewal },
+            { label: 'Run License Upload', handler: runLicenseUpload }
+        ];
+
+        actions.forEach(action => {
+            const btn = document.createElement('button');
+            btn.textContent = action.label;
+            btn.addEventListener('click', () => {
+                menu.style.display = 'none';
+                action.handler();
+            });
+            menu.appendChild(btn);
+        });
+
+        button.addEventListener('click', () => {
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        wrapper.appendChild(menu);
+        wrapper.appendChild(button);
+        document.body.appendChild(wrapper);
+    }
+
+    // === Initialization ===
+    function initializeScript() {
+        injectStyles();
+        renderMenu();
+    }
+
+    const readyCheck = setInterval(() => {
+        if (document.readyState === 'interactive' || document.readyState === 'complete') {
+            clearInterval(readyCheck);
+            initializeScript();
+        }
+    }, 250);
+})();
